@@ -36,6 +36,12 @@ test_push(const MunitParameter params[], void* data) {
   cb_push(&buf, 4.);
   munit_assert(buf.arr[3] == 4.);
 
+  munit_assert(cb_push(&buf, 5.) == false);
+  munit_assert(buf.arr[3] == 4.);
+
+  munit_assert(cb_push(&buf, 6.) == false);
+  munit_assert(buf.arr[3] == 4.);
+
   cb_free(&buf);
 
   return MUNIT_OK;
@@ -103,36 +109,35 @@ test_pop(const MunitParameter params[], void* data) {
 }
 
 static MunitResult
-test_push_pop(const MunitParameter params[], void* data) {
+test_push_pop_1size(const MunitParameter params[], void* data) {
     (void) params;
 
     CIRC_BUF buf;
-    int capacity = 4;
+    double value = 0.;
+    int capacity = 1;
+    int i = 1;
     cb_init(&buf, capacity);
 
-    munit_assert(cb_push(&buf, 1.) == true);
+    munit_assert(cb_push(&buf, i++) == true);
     munit_assert(buf.arr[0] == 1.);
 
-    munit_assert(cb_push(&buf, 2.) == true);
-    munit_assert(buf.arr[1] == 2.);
-
-    munit_assert(cb_push(&buf, 3.) == true);
-    munit_assert(buf.arr[2] == 3.);
-
-    munit_assert(cb_push(&buf, 4.) == true);
-    munit_assert(buf.arr[3] == 4.);
-
-    double value = 0.;
-
+    value = 0.;
     munit_assert(value == 0.);
     munit_assert(cb_pop(&buf, &value) == true);
     munit_assert(value == 1.);
 
-    munit_assert(cb_push(&buf, 1.) == true);
+    munit_assert(cb_push(&buf, 12) == true);
+    munit_assert(buf.arr[0] == 12);
 
+    value = 0.;
     munit_assert(value == 0.);
     munit_assert(cb_pop(&buf, &value) == true);
-    munit_assert(value == 2.);
+    munit_assert(value == 12.);
+
+    value = 0.;
+    munit_assert(value == 0.);
+    munit_assert(cb_pop(&buf, &value) == false);
+    munit_assert(value == 0.);
 
     cb_free(&buf);
 
@@ -383,10 +388,23 @@ static MunitParameterEnum test_params[] = {
 };
 
 static MunitTest CIRC_BUF_tests[] = {
-  { (char*) "/example/init", test_init, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL },
-  { (char*) "/example/push", test_push, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL },
-  { (char*) "/example/pop", test_pop, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL },
-  { (char*) "/example/push_pop", test_push_pop, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL },
+  { (char*) "/CIRC_BUF/init", test_init, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL },
+  { (char*) "/CIRC_BUF/push", test_push, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL },
+  { (char*) "/CIRC_BUF/pop", test_pop, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL },
+  { (char*) "/CIRC_BUF/push_pop_1size", test_push_pop_1size, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL },
+};
+
+/* Creating a test suite is pretty simple.  First, you'll need an
+ * array of tests: */
+static MunitTest test_suite_tests[] = {
+  /* Usually this is written in a much more compact format; all these
+   * comments kind of ruin that, though.  Here is how you'll usually
+   * see entries written: */
+  { (char*) "/example/rand", test_rand, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL },
+  /* To tell the test runner when the array is over, just add a NULL
+   * entry at the end. */
+  /*{ (char*) "/example/parameters", test_parameters, NULL, NULL, MUNIT_TEST_OPTION_NONE, test_params },*/
+  { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };
 
 /* Now we'll actually declare the test suite.  You could do this in
@@ -397,7 +415,7 @@ static const MunitSuite test_suite = {
    * Note that, while it doesn't really matter for the top-level
    * suite, NULL signal the end of an array of tests; you should use
    * an empty string ("") instead. */
-  (char*) "CIRC_BUF",
+  (char*) "",
   /* The first parameter is the array of test suites. */
   /*test_suite_tests,*/
   CIRC_BUF_tests,
@@ -430,4 +448,3 @@ int main(int argc, char* argv[MUNIT_ARRAY_PARAM(argc + 1)]) {
    * test or (if provided) the fixture setup function. */
   return munit_suite_main(&test_suite, (void*) "µnit", argc, argv);
 }
-

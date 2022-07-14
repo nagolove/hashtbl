@@ -16,7 +16,7 @@ void cb_init(CIRC_BUF *cb, int maxlen) {
 
 void cb_free(CIRC_BUF *cb) {
     assert(cb);
-    free(cb->arr);
+    if (cb->arr) free(cb->arr);
 }
 
 void cb_print(CIRC_BUF *cb) {
@@ -48,34 +48,33 @@ void cb_print(CIRC_BUF *cb) {
     printf("\n");
 }
 
-// TODO Контроль переполнения
 bool cb_push(CIRC_BUF *cb, double value) {
-    bool full = false;
+    bool notfull = true;
     assert(cb);
-    if (cb->i < cb->maxlen) {
-        cb->arr[cb->i++] = value;
+
+    if (cb->len < cb->maxlen) {
+        cb->arr[cb->i] = value;
+        cb->i = (cb->i + 1) % cb->maxlen;
         cb->len++;
-    } else if (cb->j > 0) {
-        cb->i = 0;
-        cb->arr[cb->i++] = value;
-        cb->len++;
-    } else {
-        full = true;
-    }
-    return full;
+    } else 
+        notfull = false;
+
+    return notfull;
 }
 
 // Контроль опустошения
 bool cb_pop(CIRC_BUF *cb, double *value) {
     assert(cb);
+    assert(value);
+
+    bool popped = false;
+
     if (cb->len > 0) {
-        if (cb->j >= 0) {
-            *value = cb->arr[cb->j];
-            cb->j++;
-            cb->len--;
-            return true;
-        }
-        return false;
+        *value = cb->arr[cb->j];
+        cb->j = (cb->j + 1) % cb->maxlen;
+        cb->len--;
+        popped = true;
     }
-    return false;
+
+    return popped;
 }
