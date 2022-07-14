@@ -2,20 +2,30 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
+#include <assert.h>
 
-#define LEN 4
-typedef struct CIRC_BUF {
-    double arr[LEN];
-    int i, j, maxlen, len;
-} CIRC_BUF;
+#include "fifo_circular.h"
 
-void init(CIRC_BUF *cb) {
+void cb_init(CIRC_BUF *cb, int maxlen) {
+    assert(maxlen > 0);
+    assert(cb);
     memset(cb, 0, sizeof(CIRC_BUF));
-    cb->maxlen = LEN;
+    cb->arr = calloc(maxlen, sizeof(cb->arr[0]));
+    cb->maxlen = maxlen;
 }
 
-void print(CIRC_BUF *cb) {
+void cb_free(CIRC_BUF *cb) {
+    assert(cb);
+    free(cb->arr);
+}
+
+void cb_print(CIRC_BUF *cb) {
+    assert(cb);
     printf(">> ");
+    if (cb->len == 0) {
+        printf("\n");
+        return;
+    }
     if (cb->i > cb->j) {
         int k = cb->j;
         while (k < cb->i) {
@@ -39,71 +49,33 @@ void print(CIRC_BUF *cb) {
 }
 
 // TODO Контроль переполнения
-void push(CIRC_BUF *cb, double value) {
+bool cb_push(CIRC_BUF *cb, double value) {
+    bool full = false;
+    assert(cb);
     if (cb->i < cb->maxlen) {
         cb->arr[cb->i++] = value;
+        cb->len++;
     } else if (cb->j > 0) {
         cb->i = 0;
         cb->arr[cb->i++] = value;
+        cb->len++;
     } else {
-        print(cb);
-        printf("full\n");
-        abort();
+        full = true;
     }
+    return full;
 }
 
 // Контроль опустошения
-bool pop(CIRC_BUF *cb, double *value) {
-    if (cb->j >= 0) {
-        *value = cb->arr[cb->j];
-        cb->j++;
-        return true;
+bool cb_pop(CIRC_BUF *cb, double *value) {
+    assert(cb);
+    if (cb->len > 0) {
+        if (cb->j >= 0) {
+            *value = cb->arr[cb->j];
+            cb->j++;
+            cb->len--;
+            return true;
+        }
+        return false;
     }
     return false;
-}
-
-int main() {
-    CIRC_BUF buf = {0, };
-    init(&buf);
-    int i = 1;
-
-    push(&buf, i++);
-    push(&buf, i++);
-    push(&buf, i++);
-    push(&buf, i++);
-
-    print(&buf);
-
-    double v = 0.;
-    bool res = false;
-
-    res = pop(&buf, &v);
-    printf("popped = %d, value = %f\n", (int)res, v);
-    print(&buf);
-
-    push(&buf, i++);
-    print(&buf);
-
-    res = pop(&buf, &v);
-    printf("popped = %d, value = %f\n", (int)res, v);
-    print(&buf);
-
-    push(&buf, i++);
-    print(&buf);
-
-    res = pop(&buf, &v);
-    printf("popped = %d, value = %f\n", (int)res, v);
-    print(&buf);
-
-    push(&buf, i++);
-    print(&buf);
-
-    res = pop(&buf, &v);
-    printf("popped = %d, value = %f\n", (int)res, v);
-    print(&buf);
-
-    push(&buf, i++);
-    print(&buf);
-
-    return 1;
 }

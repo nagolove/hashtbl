@@ -9,7 +9,8 @@ workspace "xcaustic"
         "-Wall",
         "-Werror",
         "-Wno-strict-aliasing",
-        --"-Wno-unused-function",
+        "-Wno-unused-function",
+        "-Wno-unused-variable",
     }
     links { 
     }
@@ -22,8 +23,11 @@ workspace "xcaustic"
     targetprefix ""
     targetdir "."
 
-    project "fifo_circular"
-        files { "**.h", "fifo_circular.c" }
+    --project "fifo_circular"
+        --files { "**.h", "fifo_circular.c"}
+
+    project "fifo_circular_test"
+        files { "**.h", "fifo_circular_test.c", "munit.c", "fifo_circular.c"}
 
     filter "configurations:Debug"
     defines { "DEBUG" }
