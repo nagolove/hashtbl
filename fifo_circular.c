@@ -48,6 +48,39 @@ void cb_print(CIRC_BUF *cb) {
     printf("\n");
 }
 
+void cb_print_circ(CIRC_BUF *cb) {
+    /*
+    printf("i = %d\n", cb->i);
+    printf("j = %d\n", cb->j);
+
+    for(int i = 0; i < cb->maxlen; i++) {
+        printf("%f\n", cb->arr[i]);
+    }
+    printf("----------------------------\n");
+    */
+
+    for(int k = cb->i; k < cb->maxlen; k++) {
+        printf("%f\n", cb->arr[k]);
+    }
+    for(int k = cb->j; k < cb->i; k++) {
+        printf("%f\n", cb->arr[k]);
+    }
+
+}
+
+void cb_push_circ(CIRC_BUF *cb, double value) {
+    assert(cb);
+
+    cb->arr[cb->i] = value;
+    cb->i = (cb->i + 1) % cb->maxlen;
+    cb->len++;
+    if (cb->len == cb->maxlen) {
+        cb->len = cb->maxlen - 1;
+    }
+
+}
+
+
 bool cb_push(CIRC_BUF *cb, double value) {
     bool notfull = true;
     assert(cb);

@@ -17,3 +17,7 @@ extern void cb_print(CIRC_BUF *cb);
 extern bool cb_push(CIRC_BUF *cb, double value);
 // Возвращает истину если удалось снять значение
 extern bool cb_pop(CIRC_BUF *cb, double *value);
+
+void cb_push_circ(CIRC_BUF *cb, double value);
+void cb_print_circ(CIRC_BUF *cb);
+
