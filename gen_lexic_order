@@ -1,0 +1,70 @@
+#!/usr/bin/env lua
+
+local inspect = require "inspect"
+local first = string.byte('a')
+local last = string.byte('z')
+
+local matrix = {};
+local len = 60
+local strings_num = 10000
+for i = 1, len do
+    matrix[#matrix + 1] = first
+end
+
+function nexxt(arr)
+    local index = 1
+    for j = #arr, 1, -1 do
+        index = j
+        if arr[index] < last then
+            break
+        end
+    end
+    --if index == 1 then
+        --return false
+    --end
+    arr[index] = arr[index] + 1
+    return true
+end
+
+function to_str(arr)
+    local s = ""
+    for k, v in ipairs(arr) do
+        s = s .. string.char(v)
+    end
+    return s
+end
+
+--print(to_str(matrix))
+
+local stuff = {}
+
+for i = 1, strings_num do
+    nexxt(matrix) 
+    if matrix[1] == last then
+        break
+    else
+        local s = to_str(matrix)
+        --print(s)
+        table.insert(stuff, s)
+    end
+end
+
+--print('matrix', inspect(matrix))
+local f = io.open("string_data.h", "w")
+f:write([[
+    struct HashDataExample {
+        char *key;
+        int value;
+    };
+
+    struct HashDataExample hash_data_example[] = {
+]])
+
+for i, str in ipairs(stuff) do
+    --f:write(string.format("\n", str .. '\n')
+    f:write(string.format('{ "%s", %d }, \n', str, i))
+end
+
+f:write("};")
+
+f:close()
