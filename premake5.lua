@@ -26,8 +26,8 @@ workspace "xcaustic"
     --project "fifo_circular"
         --files { "**.h", "fifo_circular.c"}
 
-    project "fifo_circular_test"
-        files { "**.h", "fifo_circular_test.c", "munit.c", "fifo_circular.c"}
+    project "hash_tbl_test"
+        files { "**.h", "hash_tbl_test.c", "munit.c", "hash_tbl.c"}
 
     filter "configurations:Debug"
     defines { "DEBUG" }
