@@ -2,6 +2,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
@@ -29,14 +30,32 @@ struct HashTable {
     int len;
 };
 
-uint32_t hashhh(void *key, int key_len) {
+/*#define hashhh hashhh_xor*/
+#define hashhh hashhh_add
+
+static uint32_t hashhh_add(void *key, int key_len) {
     assert(key);
     assert(key_len > 0);
     char *s = key;
     uint32_t accum = 0;
     for (int i = 0; i < key_len; i++) {
-        accum += s[i];
+        accum += s[i] * 9973;
+        /*accum += s[i];*/
     }
+    return accum;
+    /*return 5;*/
+}
+
+static uint32_t hashhh_xor(void *key, int key_len) {
+    assert(key);
+    assert(key_len > 0);
+    char *s = key;
+    uint32_t accum = 0;
+    for (int i = 0; i < key_len; i++) {
+        accum ^= s[i] * 9973;
+    }
+    /*accum ^= (accum >> 11) ^ (accum >> 25);*/
+    accum = accum * 69069U + 907133923UL;
     return accum;
 }
 
@@ -44,7 +63,8 @@ HashTable *hashtbl_new() {
     struct HashTable *ht = calloc(1, sizeof(*ht));
     if (!ht) return NULL;
 
-    ht->len = 1024;
+    ht->len = 1024 * 5;
+    /*ht->len = 256;*/
     ht->arr = calloc(sizeof(ht->arr[0]), ht->len);
 
     return ht;
@@ -140,10 +160,16 @@ bool hashtbl_remove(HashTable *ht, void *key, int key_len) {
             assert(bnode->num >= 0);
             struct Node *tmp = cur;
 
-            if (cur->prev)
-                cur->prev->next = cur->next;
-            if (cur->next)
-                cur->next->prev = cur->prev;
+            if (cur == bnode->head) {
+                bnode->head = NULL;
+            } else {
+
+                if (cur->prev)
+                    cur->prev->next = cur->next;
+                if (cur->next)
+                    cur->next->prev = cur->prev;
+
+            }
 
             free(tmp);
 
@@ -247,3 +273,22 @@ bool hashtbl_iter_next(
     return false;
 }
 
+void hashtbl_dump_collisions(HashTable *ht, const char *fname) {
+    assert(ht);
+    assert(fname);
+
+    FILE *f = fopen(fname, "w");
+    if (!f) {
+        printf("Could not save to file %s\n", fname);
+        exit(EXIT_FAILURE);
+    }
+    
+    fprintf(f, "{\n");
+    fprintf(f, "len = %d,\n", ht->len);
+    for (int i = 0; i < ht->len; ++i) {
+        fprintf(f, "%d, ", ht->arr[i].num);
+    }
+    fprintf(f, "}\n");
+
+    fclose(f);
+}

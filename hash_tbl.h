@@ -42,7 +42,11 @@ void *hashtbl_get(HashTable *ht, void *key, int key_len, int *value_len);
 uint32_t hashtbl_get_count(HashTable *ht);
 void hashtbl_each(HashTable *ht, HashTableIterator func, void *data);
 
+void hashtbl_dump_collisions(HashTable *ht, const char *fname);
+
+/*
 void hashtbl_iter_begin(HashTable *ht);
 bool hashtbl_iter_next(
     HashTable *ht, void **key, int *key_len, void **value, int *value_len
-);
+)
+*/;

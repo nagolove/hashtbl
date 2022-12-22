@@ -3,7 +3,38 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "string_data.h"
+struct HashTest {
+    char *key;
+    int value;
+};
+
+/*
+struct HashTest hash_data_example1[] = {
+#include "string_data_1.h"
+};
+
+struct HashTest hash_data_example2[] = {
+#include "string_data_2.h"
+};
+
+struct HashTest hash_data_example3[] = {
+#include "string_data_3.h"
+};
+
+struct HashTest hash_data_example4[] = {
+#include "string_data_4.h"
+};
+
+struct HashTest hash_data_example5[] = {
+#include "string_data_5.h"
+};
+
+struct HashTest hash_data_example6[] = {
+#include "string_data_6.h"
+};
+*/
+
+#include "test_cases.h"
 
 static MunitResult
 test_new_free(const MunitParameter params[], void* data) {
@@ -173,25 +204,20 @@ test_clear(const MunitParameter params[], void* data) {
     return MUNIT_OK;
 }
 
-struct HashTest {
-    char *key;
-    int value;
-};
-
 struct HashTest hash_test_data[] = {
-    {"alfla",            0},
-    {"lsdfjlew",         -12312},
-    {"lsdfjlew_",        -3430},
-    {"ljlew",            2450},
-    {"235829",           2340},
-    {"23",               0},
-    {"2334322342342342", 80},
+    {"1234",       1},
+    {"12345",      2},
+    {"123456",     3},
+    {"1234567",    4},
+    {"12345678",   5},
+    {"123456789",  6},
+    {"1234567890", 7},
 };
 
 int hash_test_get(const char *key) {
     int len = sizeof(hash_test_data) / sizeof(struct HashTest);
     for (int j = 0; j < len; ++j) {
-        if (!strcmp(hash_test_data[j].key, key)) {
+        if (strcmp(hash_test_data[j].key, key) == 0) {
             return hash_test_data[j].value;
         }
     }
@@ -202,20 +228,29 @@ HashTableAction iter(
     void *key, int key_len, void *value, int value_len, void *data
 ) {
     int res = hash_test_get(key);
+    munit_assert_int(res, !=, INT32_MIN);
     if (res == INT32_MIN) {
         *((bool*)data) = true;
-        return HT_ACTION_BREAK;
+        return HT_ACTION_NEXT;
     }
     return HT_ACTION_NEXT;
 }
 
+HashTableAction iter2(
+    void *key, int key_len, void *value, int value_len, void *data
+) {
+    munit_assert(true);
+    return HT_ACTION_NEXT;
+}
+
+
 void hash_test_add(HashTable *ht) {
     int len = sizeof(hash_test_data) / sizeof(struct HashTest);
     for (int j = 0; j < len; ++j) {
-        hashtbl_add(
+        hashtbl_add_s(
             ht, 
-            hash_test_data[j].key, strlen(hash_test_data[j].key),
-            &hash_test_data[j].value, sizeof(hash_test_data[j])
+            hash_test_data[j].key,
+            &hash_test_data[j].value, sizeof(hash_test_data[j].value)
         );
     }
 }
@@ -235,6 +270,9 @@ test_iter1(const MunitParameter params[], void* data) {
 static MunitResult
 test_iter2(const MunitParameter params[], void* data) {
     (void) params;
+    HashTable *ht = hashtbl_new();
+    hashtbl_each(ht, iter2, NULL);
+    hashtbl_free(ht);
     return MUNIT_OK;
 }
 
@@ -242,8 +280,22 @@ static MunitResult
 test_remove(const MunitParameter params[], void* data) {
     (void) params;
     HashTable *ht = hashtbl_new();
-    /*hash_test_add(ht);*/
     munit_assert_false(hashtbl_remove_s(ht, "non-existing-key"));
+    munit_assert_int(hashtbl_get_count(ht), ==, 0);
+
+    int value = -1000;
+    munit_assert_true(
+        hashtbl_add_s(ht, "existing-key1", &value, sizeof(value))
+    );
+    value = -1001;
+    munit_assert_true(
+        hashtbl_add_s(ht, "existing-key2", &value, sizeof(value))
+    );
+    munit_assert_int(hashtbl_get_count(ht), ==, 2);
+
+    munit_assert_true(hashtbl_remove_s(ht, "existing-key1"));
+    munit_assert_true(hashtbl_remove_s(ht, "existing-key2"));
+
     hashtbl_free(ht);
     return MUNIT_OK;
 }
@@ -261,6 +313,45 @@ test_add_remove(const MunitParameter params[], void* data) {
     }
     munit_assert_int(hashtbl_get_count(ht), ==, 0);
     hashtbl_free(ht);
+    return MUNIT_OK;
+}
+
+void dump(struct HashTest *hash_data_example, int len, int file_num) {
+    HashTable *ht = NULL;
+
+    ht = hashtbl_new();
+    for (int k = 0; k < len; ++k) {
+        hashtbl_add_s(
+            ht, 
+            hash_data_example[k].key,
+            &hash_data_example[k].value,
+            sizeof(hash_data_example[k].value)
+        );
+    }
+
+    char buf[32] = {0};
+    sprintf(buf, "dump-%d.lua", file_num);
+    hashtbl_dump_collisions(ht, buf);
+    hashtbl_free(ht);
+
+}
+
+#define ARRLEN(x) \
+    sizeof(x) / sizeof(x[0])
+
+static MunitResult
+test_dump_collisions(const MunitParameter params[], void* data) {
+    (void) params;
+
+    /*
+    dump(hash_data_example1, ARRLEN(hash_data_example1), 1);
+    dump(hash_data_example2, ARRLEN(hash_data_example2), 2);
+    dump(hash_data_example3, ARRLEN(hash_data_example3), 3);
+    dump(hash_data_example4, ARRLEN(hash_data_example4), 4);
+    dump(hash_data_example5, ARRLEN(hash_data_example5), 5);
+    dump(hash_data_example6, ARRLEN(hash_data_example6), 6);
+    */
+
     return MUNIT_OK;
 }
 
@@ -523,6 +614,7 @@ static MunitTest CIRC_BUF_tests[] = {
   { (char*) "/hash_table/remove", test_remove, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL },
   { (char*) "/hash_table/add_remove", test_add_remove, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL },
   { (char*) "/hash_table/add_remove_get", test_add_remove_get, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL },
+  { (char*) "/hash_table/dump_collisions", test_dump_collisions, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL },
 };
 
 /* Creating a test suite is pretty simple.  First, you'll need an

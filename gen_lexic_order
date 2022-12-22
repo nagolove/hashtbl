@@ -1,14 +1,41 @@
 #!/usr/bin/env lua
 
 local inspect = require "inspect"
-local first = string.byte('a')
-local last = string.byte('z')
+
+suffix = ""
+first = string.byte('a')
+last = string.byte('z')
+len = 60
+
+--print("args", inspect(arg))
+for k = 1, #arg do
+    --print(k, arg[k])
+    local ok, errmsg = pcall(function()
+        load(arg[k])()
+    end)
+    if not ok then
+        print('errmsg', errmsg)
+    end
+end
+
+first = string.byte(first)
+last = string.byte(last)
+
+local fname = string.format("string_data%s.h", suffix)
+--print('fname', fname)
 
 local matrix = {};
-local len = 60
 local strings_num = 10000
 for i = 1, len do
     matrix[#matrix + 1] = first
+end
+
+function check_str(char_index, str)
+    local res = false
+    for i = 1, #str do
+        res = res or string.char(char_index) ~= string.sub(str, i, i)
+    end
+    return res
 end
 
 function nexxt(arr)
@@ -19,9 +46,24 @@ function nexxt(arr)
             break
         end
     end
-    --if index == 1 then
-        --return false
-    --end
+   
+    --[[
+    if arr[index] > 255 then
+        arr[index] = 255
+    end
+    --]]
+
+    --[[
+    if 
+        string.char(arr[index] + 1) ~= '\"' or
+        string.char(arr[index] + 1) ~= "\\" 
+        then
+        arr[index] = arr[index] + 2
+    else
+        arr[index] = arr[index] + 1
+    end
+    --]]
+
     arr[index] = arr[index] + 1
     return true
 end
@@ -33,8 +75,6 @@ function to_str(arr)
     end
     return s
 end
-
---print(to_str(matrix))
 
 local stuff = {}
 
@@ -49,22 +89,8 @@ for i = 1, strings_num do
     end
 end
 
---print('matrix', inspect(matrix))
-local f = io.open("string_data.h", "w")
-f:write([[
-    struct HashDataExample {
-        char *key;
-        int value;
-    };
-
-    struct HashDataExample hash_data_example[] = {
-]])
-
+local f = io.open(fname, "w")
 for i, str in ipairs(stuff) do
-    --f:write(string.format("\n", str .. '\n')
     f:write(string.format('{ "%s", %d }, \n', str, i))
 end
-
-f:write("};")
-
 f:close()
