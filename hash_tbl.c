@@ -8,11 +8,14 @@
 #include <string.h>
 #include <sys/types.h>
 
+//TODO: Как посчитать среднее число коллизий в таблице?
+//TODO: Сжимать-ли таблицу при массовом удалении ключей?
+
 /*
-    Раскладка данных такова:
-    --------------------------------
-    | Node | key data | value data |
-    --------------------------------
+Раскладка данных такова:
+----------------------------------------------------------------------------
+| Node | (up to 16 bytes padding) key data | (16 bytes aligned) value data |
+----------------------------------------------------------------------------
 */
 struct Node {
     struct Node *prev;
@@ -27,16 +30,20 @@ struct BaseNode {
 
 struct HashTable {
     struct BaseNode *arr;
-    int len;
+    HashFunction    hasher;
+    //int             len, longestchain, loaded;
+    //XXX: longestchain - вопрос реализации
+    //XXX: shortestchain - ???
+    int             len, loaded;
 };
 
 /*#define hashhh hashhh_xor*/
 #define hashhh hashhh_add
 
-static uint32_t hashhh_add(void *key, int key_len) {
+static uint32_t hashhh_add(const void *key, int key_len) {
     assert(key);
     assert(key_len > 0);
-    char *s = key;
+    const char *s = key;
     uint32_t accum = 0;
     for (int i = 0; i < key_len; i++) {
         accum += s[i] * 9973;
@@ -46,10 +53,10 @@ static uint32_t hashhh_add(void *key, int key_len) {
     /*return 5;*/
 }
 
-static uint32_t hashhh_xor(void *key, int key_len) {
+static uint32_t hashhh_xor(const void *key, int key_len) {
     assert(key);
     assert(key_len > 0);
-    char *s = key;
+    const char *s = key;
     uint32_t accum = 0;
     for (int i = 0; i < key_len; i++) {
         accum ^= s[i] * 9973;
@@ -59,14 +66,27 @@ static uint32_t hashhh_xor(void *key, int key_len) {
     return accum;
 }
 
-HashTable *hashtbl_new() {
+static inline uint32_t get_aligned_size(uint32_t size) {
+    return size + size % 16;
+}
+
+HashTable *hashtbl_new(struct HashSetup *setup) {
+    printf("sizeof(Node) %zd\n", sizeof(struct Node));
+    printf("sizeof(Node) %d\n", get_aligned_size(sizeof(struct Node)));
+
     struct HashTable *ht = calloc(1, sizeof(*ht));
     if (!ht) return NULL;
 
-    ht->len = 1024 * 5;
-    /*ht->len = 256;*/
-    ht->arr = calloc(sizeof(ht->arr[0]), ht->len);
+    if (setup) {
+        ht->len = setup->len;
+        ht->hasher = setup->hasher;
+    } else {
+        ht->len = 1024 * 5;
+        /*ht->len = 256;*/
+        ht->hasher = hashhh;
+    }
 
+    ht->arr = calloc(sizeof(ht->arr[0]), ht->len);
     return ht;
 }
 
@@ -86,26 +106,30 @@ void hashtbl_free(HashTable *ht) {
     free(ht);
 }
 
-static inline void *get_key(struct Node *node) {
+static inline void *get_key(const struct Node *node) {
     assert(node);
-    return (char*)node + sizeof(*node);
+    return (char*)node + get_aligned_size(sizeof(*node));
 }
 
-static inline void *get_value(struct Node *node) {
+static inline void *get_value(const struct Node *node) {
     assert(node);
     assert(node->key_len > 0);
-    return (char*)node + sizeof(*node) + node->key_len;
+    return (char*)node + get_aligned_size(sizeof(*node)) +
+                         get_aligned_size(node->key_len);
 }
 
 bool hashtbl_add(
-    HashTable *ht, void *key, int key_len, void *value, int value_len
+    HashTable *ht, 
+    const void *key, int key_len, const void *value, int value_len
 ) {
     assert(ht);
     assert(key);
     assert(key_len > 0);
     assert(value_len > 0);
 
-    struct Node *node = calloc(1, sizeof(*node) + key_len + value_len);
+    uint32_t size = get_aligned_size(sizeof(struct Node)) + 
+                    get_aligned_size(key_len) + value_len;
+    struct Node *node = malloc(size);
     if (!node) return false;
 
     node->value_len = value_len;
@@ -125,6 +149,7 @@ bool hashtbl_add(
         if (!memcmp(key, get_key(cur), cur->key_len)) {
             node->next = cur->next;
             node->prev = cur->prev;
+            bnode->num--;
             free(cur);
             return false;
         }
@@ -134,6 +159,7 @@ bool hashtbl_add(
     if (!head) {
         node->next = NULL;
         node->prev = NULL;
+        ht->loaded++;
     } else {
         head->prev = node;
         node->prev = NULL;
@@ -146,7 +172,7 @@ bool hashtbl_add(
     return true;
 }
 
-bool hashtbl_remove(HashTable *ht, void *key, int key_len) {
+bool hashtbl_remove(HashTable *ht, const void *key, int key_len) {
     assert(ht);
     assert(key);
 
@@ -162,6 +188,7 @@ bool hashtbl_remove(HashTable *ht, void *key, int key_len) {
 
             if (cur == bnode->head) {
                 bnode->head = NULL;
+                ht->loaded--;
             } else {
 
                 if (cur->prev)
@@ -190,11 +217,13 @@ void hashtbl_clear(HashTable *ht) {
             free(cur);
             cur = next;
         }
+        bnode->head = NULL;
+        bnode->num = 0;
     }
-    ht->len = 0;
+    ht->loaded = 0;
 }
 
-void *hashtbl_get(HashTable *ht, void *key, int key_len, int *value_len) {
+void *hashtbl_get(HashTable *ht, const void *key, int key_len, int *value_len) {
     assert(ht);
     assert(key);
 
@@ -218,7 +247,7 @@ void *hashtbl_get(HashTable *ht, void *key, int key_len, int *value_len) {
     return NULL;
 }
 
-uint32_t hashtbl_get_count(HashTable *ht) {
+uint32_t hashtbl_get_count(const HashTable *ht) {
     assert(ht);
     uint32_t count = 0;
     for (int j = 0; j < ht->len; ++j) {
@@ -264,6 +293,7 @@ void hashtbl_each(HashTable *ht, HashTableIterator func, void *data) {
     }
 }
 
+/*
 void hashtbl_iter_begin(HashTable *ht) {
 }
 
@@ -272,6 +302,7 @@ bool hashtbl_iter_next(
 ) {
     return false;
 }
+*/
 
 void hashtbl_dump_collisions(HashTable *ht, const char *fname) {
     assert(ht);
@@ -291,4 +322,9 @@ void hashtbl_dump_collisions(HashTable *ht, const char *fname) {
     fprintf(f, "}\n");
 
     fclose(f);
+}
+
+HashTable *hashtbl_clone(HashTable *ht) {
+    assert(ht);
+    return NULL;
 }

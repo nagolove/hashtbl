@@ -41,7 +41,7 @@ test_new_free(const MunitParameter params[], void* data) {
     (void) params;
     HashTable *ht = NULL;
     for (int j = 0; j < 100; ++j) {
-        ht = hashtbl_new();
+        ht = hashtbl_new(NULL);
         munit_assert_not_null(ht);
         hashtbl_free(ht);
     }
@@ -51,7 +51,7 @@ test_new_free(const MunitParameter params[], void* data) {
 static MunitResult
 test_add(const MunitParameter params[], void* data) {
     (void) params;
-    HashTable *ht = hashtbl_new();
+    HashTable *ht = hashtbl_new(NULL);
     int value = 0;
     munit_assert_true(hashtbl_add_s(ht, "hello", &value, sizeof(value)));
     munit_assert_int(hashtbl_get_count(ht), ==, 1);
@@ -83,7 +83,7 @@ test_add(const MunitParameter params[], void* data) {
 static MunitResult
 test_add_get(const MunitParameter params[], void* data) {
     (void) params;
-    HashTable *ht = hashtbl_new();
+    HashTable *ht = hashtbl_new(NULL);
     int value, *res;
 
     value = 101;
@@ -147,7 +147,7 @@ test_add_get(const MunitParameter params[], void* data) {
 static MunitResult
 test_get(const MunitParameter params[], void* data) {
     (void) params;
-    HashTable *ht = hashtbl_new();
+    HashTable *ht = hashtbl_new(NULL);
     int value = 0;
     munit_assert_true(hashtbl_add_s(ht, "hello", &value, sizeof(value)));
 
@@ -170,7 +170,7 @@ test_get(const MunitParameter params[], void* data) {
 static MunitResult
 test_clear(const MunitParameter params[], void* data) {
     (void) params;
-    HashTable *ht = hashtbl_new();
+    HashTable *ht = hashtbl_new(NULL);
     int value = 0;
     munit_assert_true(hashtbl_add_s(ht, "hello", &value, sizeof(value)));
 
@@ -258,7 +258,7 @@ void hash_test_add(HashTable *ht) {
 static MunitResult
 test_iter1(const MunitParameter params[], void* data) {
     (void) params;
-    HashTable *ht = hashtbl_new();
+    HashTable *ht = hashtbl_new(NULL);
     bool failed = false;
     hash_test_add(ht);
     hashtbl_each(ht, iter, &failed);
@@ -270,7 +270,7 @@ test_iter1(const MunitParameter params[], void* data) {
 static MunitResult
 test_iter2(const MunitParameter params[], void* data) {
     (void) params;
-    HashTable *ht = hashtbl_new();
+    HashTable *ht = hashtbl_new(NULL);
     hashtbl_each(ht, iter2, NULL);
     hashtbl_free(ht);
     return MUNIT_OK;
@@ -279,7 +279,7 @@ test_iter2(const MunitParameter params[], void* data) {
 static MunitResult
 test_remove(const MunitParameter params[], void* data) {
     (void) params;
-    HashTable *ht = hashtbl_new();
+    HashTable *ht = hashtbl_new(NULL);
     munit_assert_false(hashtbl_remove_s(ht, "non-existing-key"));
     munit_assert_int(hashtbl_get_count(ht), ==, 0);
 
@@ -303,7 +303,7 @@ test_remove(const MunitParameter params[], void* data) {
 static MunitResult
 test_add_remove(const MunitParameter params[], void* data) {
     (void) params;
-    HashTable *ht = hashtbl_new();
+    HashTable *ht = hashtbl_new(NULL);
     hash_test_add(ht);
     int len = sizeof(hash_test_data) / sizeof(struct HashTest);
     for (int j = 0; j < len; ++j) {
@@ -319,7 +319,7 @@ test_add_remove(const MunitParameter params[], void* data) {
 void dump(struct HashTest *hash_data_example, int len, int file_num) {
     HashTable *ht = NULL;
 
-    ht = hashtbl_new();
+    ht = hashtbl_new(NULL);
     for (int k = 0; k < len; ++k) {
         hashtbl_add_s(
             ht, 

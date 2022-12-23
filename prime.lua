@@ -51,12 +51,18 @@ local primes_100_control = {
     67, 71, 73, 79, 83, 89, 97
 }
 
-print('result', inspect(make_primes(100)))
-print('result', inspect(make_primes(100000)))
+--print('result', inspect(make_primes(100)))
+--print('result', inspect(make_primes(10000)))
 
+local maxnum = tonumber(arg[1])
+if type(maxnum) == 'number' then
+    print(inspect(make_primes(maxnum)))
+end
+
+--[[
 local primes_100_experiment = make_primes(100)
 assert(#primes_100_experiment == #primes_100_control)
 for k, v in ipairs(primes_100_control) do
     assert(primes_100_experiment[k] == v)
 end
-
+--]]
