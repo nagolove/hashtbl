@@ -9,26 +9,26 @@ ifndef verbose
 endif
 
 ifeq ($(config),debug)
-  hash_tbl_test_config = debug
+  hashtbl_test_config = debug
 endif
 ifeq ($(config),release)
-  hash_tbl_test_config = release
+  hashtbl_test_config = release
 endif
 
-PROJECTS := hash_tbl_test
+PROJECTS := hashtbl_test
 
 .PHONY: all clean help $(PROJECTS) 
 
 all: $(PROJECTS)
 
-hash_tbl_test:
-ifneq (,$(hash_tbl_test_config))
-	@echo "==== Building hash_tbl_test ($(hash_tbl_test_config)) ===="
-	@${MAKE} --no-print-directory -C . -f hash_tbl_test.make config=$(hash_tbl_test_config)
+hashtbl_test:
+ifneq (,$(hashtbl_test_config))
+	@echo "==== Building hashtbl_test ($(hashtbl_test_config)) ===="
+	@${MAKE} --no-print-directory -C . -f hashtbl_test.make config=$(hashtbl_test_config)
 endif
 
 clean:
-	@${MAKE} --no-print-directory -C . -f hash_tbl_test.make clean
+	@${MAKE} --no-print-directory -C . -f hashtbl_test.make clean
 
 help:
 	@echo "Usage: make [config=name] [target]"
@@ -40,6 +40,6 @@ help:
 	@echo "TARGETS:"
 	@echo "   all (default)"
 	@echo "   clean"
-	@echo "   hash_tbl_test"
+	@echo "   hashtbl_test"
 	@echo ""
 	@echo "For more information, see https://github.com/premake/premake-core/wiki"

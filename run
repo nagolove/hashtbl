@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+make && gdb --args ./hashtbl_test --no-fork
