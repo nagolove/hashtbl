@@ -21,7 +21,7 @@ workspace "hashtbl"
     local include_prefix = 
 [[struct HashTestCase {
     int minlen, maxlen, count;
-    struct HashTest *ht;
+    struct Pair *ht;
 };
 struct HashTestCase hash_data_cases[] = {
 ]]
@@ -84,7 +84,7 @@ struct HashTestCase hash_data_cases[] = {
             for k, v in pairs(include_vars) do
                 file:write(
                     string.format([[
-static struct HashTest %s[] = {
+static struct Pair %s[] = {
                     ]], v.var_name)
                 )
                 print(v.var_name)
