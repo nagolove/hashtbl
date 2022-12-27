@@ -53,5 +53,7 @@ void hashtbl_each(HashTable *ht, HashTableIterator func, void *data);
 
 void hashtbl_dump_collisions(HashTable *ht, const char *fname);
 
-uint64_t hasher_fnv64(const void *data, int len);
-uint32_t hasher_fnv32(const void *data, int len);
+//uint64_t hasher_fnv64(const void *data, int len);
+Hash_t hasher_fnv32(const void *data, int len);
+Hash_t hasher_add(const void *key, int key_len);
+Hash_t hasher_xor(const void *key, int key_len);

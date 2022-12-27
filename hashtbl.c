@@ -37,44 +37,19 @@ struct HashTable {
     int             len, loaded;
 };
 
-//#define default_hasher hasher_add
-#define default_hasher hasher_xor
-//#define default_hasher hasher_fnv32
-
-static Hash_t hasher_add(const void *key, int key_len) {
-    assert(key);
-    assert(key_len > 0);
-    const char *s = key;
-    Hash_t accum = 0;
-    for (int i = 0; i < key_len; i++) {
-        accum += s[i] * 9973;
-        /*accum += s[i];*/
-    }
-    return accum;
-    /*return 5;*/
-}
-
-static Hash_t hasher_xor(const void *key, int key_len) {
-    assert(key);
-    assert(key_len > 0);
-    const char *s = key;
-    Hash_t accum = 0;
-    for (int i = 0; i < key_len; i++) {
-        accum ^= s[i] * 9973;
-    }
-    /*accum ^= (accum >> 11) ^ (accum >> 25);*/
-    accum = accum * 69069U + 907133923UL;
-    return accum;
-}
+/*#define default_hasher hasher_add*/
+/*#define default_hasher hasher_xor*/
+#define default_hasher hasher_fnv32
 
 static inline uint32_t get_aligned_size(uint32_t size) {
-    return size + size % 16;
+    // XXX: Выделение лишних 16 байт при size % 16 == 0
+    /*return size + 16 - size % 16;*/
+    int mod = size % 16;
+    /*return size - mod + (((mod + 15) / 16) << 4);*/
+    return size - mod + (((mod + 15) >> 4) << 4);
 }
 
 HashTable *hashtbl_new(struct HashSetup *setup) {
-    /*printf("sizeof(Node) %zd\n", sizeof(struct Node));*/
-    /*printf("sizeof(Node) %d\n", get_aligned_size(sizeof(struct Node)));*/
-
     struct HashTable *ht = calloc(1, sizeof(*ht));
     if (!ht) return NULL;
 
@@ -82,7 +57,7 @@ HashTable *hashtbl_new(struct HashSetup *setup) {
         ht->len = setup->len ? setup->len : 1024;
         ht->hasher = setup->hasher ? setup->hasher : default_hasher;
     } else {
-        ht->len = 1024 * 5;
+        ht->len = 1024;
         /*ht->len = 256;*/
         ht->hasher = default_hasher;
     }
@@ -325,11 +300,11 @@ HashTable *hashtbl_clone(HashTable *ht) {
     return NULL;
 }
 
-uint32_t hasher_fnv32(const void *data, int len) {
+Hash_t hasher_fnv32(const void *data, int len) {
     assert(data);
     assert(len > 0);
     const char *bytes = (char*)data;
-    uint32_t h = 0x811c9dc5;
+    Hash_t h = 0x811c9dc5;
 
     for (; len >= 8; len -= 8, bytes += 8) {
         h = (h ^ bytes[0]) * 0x01000193;
@@ -370,3 +345,42 @@ uint64_t hasher_fnv64(const void *data, int len) {
     }
     return h;
 }
+
+Hash_t hasher_add(const void *key, int key_len) {
+    assert(key);
+    assert(key_len > 0);
+    const char *s = key;
+    Hash_t accum = 0;
+
+    /*for (int i = 0; i < key_len; i++) {*/
+    for (; key_len >= 8; key_len -= 8, s += 8) {
+        accum += s[0] * 9973;
+        accum += s[1] * 9973;
+        accum += s[2] * 9973;
+        accum += s[3] * 9973;
+        accum += s[4] * 9973;
+        accum += s[5] * 9973;
+        accum += s[6] * 9973;
+        accum += s[7] * 9973;
+    }
+
+    while (key_len--) {
+        accum += *s++;
+    }
+
+    return accum;
+}
+
+Hash_t hasher_xor(const void *key, int key_len) {
+    assert(key);
+    assert(key_len > 0);
+    const char *s = key;
+    Hash_t accum = 0;
+    for (int i = 0; i < key_len; i++) {
+        accum ^= s[i] * 9973;
+    }
+    /*accum ^= (accum >> 11) ^ (accum >> 25);*/
+    accum = accum * 69069U + 907133923UL;
+    return accum;
+}
+
