@@ -15,23 +15,29 @@ struct Pair {
 #include "test_cases.h"
 
 struct Pair test_data[] = {
-    {"1234",       0},
-    {"12345",      1},
-    {"123456",     2},
-    {"1234567",    3},
-    {"12345678",   4},
-    {"123456789",  5},
-    {"1234567890", 6},
+    {"1",          1},
+    {"12",         2},
+    {"123",        3},
+    {"1234",       4},
+    {"12345",      5},
+    {"123456",     6},
+    {"1234567",    7},
+    {"12345678",   8},
+    {"123456789",  9},
+    {"1234567890", 10},
 };
 
 struct Pair test_data_updated[] = {
-    {"1234",       10},
-    {"12345",      11},
-    {"123456",     12},
-    {"1234567",    13},
-    {"12345678",   14},
-    {"123456789",  15},
-    {"1234567890", 16},
+    {"1",          1 + 10},
+    {"12",         2 + 10},
+    {"123",        3 + 10},
+    {"1234",       4 + 10},
+    {"12345",      5 + 10},
+    {"123456",     6 + 10},
+    {"1234567",    7 + 10},
+    {"12345678",   8 + 10},
+    {"123456789",  9 + 10},
+    {"1234567890", 10 + 10},
 };
 
 struct TestCase {
@@ -121,12 +127,84 @@ HashTableAction iter_updated(
     /*int v = get(cases[0].data, cases[0].len, key) + 10;*/
     int v = get(cases[1].data, cases[1].len, key);
     printf(
-        "iter_updated: key '%s', value %d, v %d\n",
+        "\niter_updated: key '%s', value %d, v %d\n",
         (char*)key, *((int*)value), v
     );
     munit_assert_int(v, !=, INT32_MIN);
     munit_assert_int(v, ==, *((int*)value));
     return HT_ACTION_NEXT;
+}
+
+HashTableAction iter_print(
+    const void *key, int key_len, void *value, int value_len, void *data
+) {
+    size_t sz = key_len + 2; 
+    char *quoted_key = alloca(sz);
+    assert(quoted_key);
+    memset(quoted_key, 0, sz);
+    sprintf(quoted_key, "'%s'", (char*)key);
+
+    printf(
+        "\niter_print: key %12s, key_len %4d, value %4d, value_len %4d\n",
+        quoted_key, key_len, *((int*)value), value_len
+    );
+    return HT_ACTION_NEXT;
+}
+
+void check_by_get(HashTable *ht, struct Pair *data, int data_len) {
+    assert(ht);
+    assert(data);
+    assert(data_len >= 0);
+    for (int j = 0; j < data_len; ++j) {
+        int value_len = 0;
+        int *value_ptr =  hashtbl_get(
+            ht, 
+            data[j].key, strlen(data[j].key) + 1,
+            &value_len
+        );
+        munit_assert_ptr_not_null(value_ptr);
+        munit_assert_int(value_len, ==, sizeof(int));
+        munit_assert_int(
+            get(data, data_len, data[j].key),
+            ==,
+            *value_ptr
+        );
+    }
+}
+
+struct IterCheckContext {
+    struct Pair* data;
+    int          data_len;
+    bool         *set;
+};
+
+HashTableAction iter_check(
+    const void *key, int key_len, void *value, int value_len, void *data
+) {
+    struct IterCheckContext *ctx = data;
+    munit_assert_int(
+        get_key_len(ctx->data, ctx->data_len, key),
+        ==,
+        key_len
+    );
+    munit_assert_int(
+        get(ctx->data, ctx->data_len, key),
+        ==,
+        *((int*)value)
+    );
+    return HT_ACTION_NEXT;
+}
+
+void check_by_each(HashTable *ht, struct Pair *data, int data_len) {
+    assert(data);
+    assert(data_len >= 0);
+    struct IterCheckContext ctx = {
+        .data = data,
+        .data_len = data_len,
+        .set = calloc(sizeof(bool), data_len),
+    };
+    hashtbl_each(ht, iter_check, &ctx);
+    free(ctx.set);
 }
 
 static MunitResult
@@ -151,10 +229,24 @@ test_update(const MunitParameter params[], void* data) {
             *value_ptr
         );
     }
-
+    // */
     add(cases[1].data, cases[1].len, ht);
 
-    hashtbl_each(ht, iter_updated, NULL);
+    check_by_get(ht, cases[1].data, cases[1].len);
+
+    hashtbl_dump_collisions(ht, "test_update.lua");
+
+    printf("\n---------------------\n");
+    hashtbl_each(ht, iter_print, NULL);
+    printf("\n---------------------\n");
+
+    //add(cases[1].data, cases[1].len, ht);
+
+    printf("\n---------------------\n");
+    hashtbl_each(ht, iter_print, NULL);
+    printf("\n---------------------\n");
+
+    //hashtbl_each(ht, iter_updated, NULL);
 
     hashtbl_free(ht);
     return MUNIT_OK;
@@ -840,7 +932,8 @@ test_compare_tear_down(void* fixture) {
 }
 
 static char* hasher_func_names[] = {
-  (char*) "add", (char*) "xor", (char*) "fnv32", NULL
+  //(char*) "add", (char*) "xor", (char*) "fnv32", NULL
+  (char*) "add", NULL
 };
 
 static char* bar_params[] = {

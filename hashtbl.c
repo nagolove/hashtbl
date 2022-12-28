@@ -21,7 +21,10 @@ struct Node {
     struct Node *prev;
     struct Node *next;
     int key_len, value_len;
+    //int counter;
 };
+
+//static int counter = 0;
 
 struct BaseNode {
     struct Node *head;
@@ -41,12 +44,40 @@ struct HashTable {
 /*#define default_hasher hasher_xor*/
 #define default_hasher hasher_fnv32
 
+uint64_t primes_grow_15[] = {
+    251, 383, 571, 863, 1291, 1933, 2909, 4373, 6553, 9839, 14759, 22133,
+    33211, 49811, 74719, 112069, 168127, 252193, 378289, 567407, 851131,
+    1276721, 1915057, 2872621, 4308937, 6463399, 9695099, 14542651, 21813997,
+    32721001, 49081441, 73622251, 110433383, 165650033, 248475107, 372712667,
+    559068997, 838603499, 1257905249, 1886857859, 2830286819, 4245430261,
+    6368145391,
+};
+
+uint64_t primes_grow_20[] = {
+    251, 509, 1021, 2039, 4093, 8191, 16381, 32749, 65521, 131071, 262139, 
+    524287, 1048573, 2097143, 4194301, 8388593, 16777213, 33554393, 67108859, 
+    134217689, 268435399, 536870909, 1073741789, 2147483647, 4294967291, 
+};
+
+#define primes_grow primes_grow_15
+
+uint32_t next_size(uint32_t size) {
+    for (int i = 0; i < sizeof(primes_grow) / sizeof(primes_grow[0]); ++i) {
+        if (primes_grow[i] > size)
+            return primes_grow[i];
+    }
+    fprintf(stderr, "hashtbl size limit are reached\n");
+    exit(EXIT_FAILURE);
+    return 0;
+};
+
 static inline uint32_t get_aligned_size(uint32_t size) {
     // XXX: Выделение лишних 16 байт при size % 16 == 0
     /*return size + 16 - size % 16;*/
-    int mod = size % 16;
+    return size;
+    //int mod = size % 16;
     /*return size - mod + (((mod + 15) / 16) << 4);*/
-    return size - mod + (((mod + 15) >> 4) << 4);
+    //return size - mod + (((mod + 15) >> 4) << 4);
 }
 
 HashTable *hashtbl_new(struct HashSetup *setup) {
@@ -62,6 +93,7 @@ HashTable *hashtbl_new(struct HashSetup *setup) {
         ht->hasher = default_hasher;
     }
 
+    ht->len = next_size(ht->len);
     ht->arr = calloc(sizeof(ht->arr[0]), ht->len);
     return ht;
 }
@@ -106,14 +138,22 @@ bool hashtbl_add(
 
     uint32_t size = get_aligned_size(sizeof(struct Node)) + 
                     get_aligned_size(key_len) + value_len;
-    struct Node *node = malloc(size);
-    if (!node) return false;
+    struct Node *new_node = malloc(size);
+    if (!new_node) {
+        fprintf(stderr, "hashtbl_add: malloc failed\n");
+        exit(EXIT_FAILURE);
+    }
+    memset(new_node, 0, sizeof(*new_node));
 
-    node->value_len = value_len;
-    node->key_len = key_len;
+    //new_node->counter = counter;
+    //printf("\nnew_node->counter %d\n", new_node->counter);
+    //counter++;
 
-    memcpy(get_key(node), key, key_len);
-    memcpy(get_value(node), value, value_len);
+    new_node->value_len = value_len;
+    new_node->key_len = key_len;
+
+    memcpy(get_key(new_node), key, key_len);
+    memcpy(get_value(new_node), value, value_len);
 
     Hash_t hash_v = ht->hasher(key, key_len) % ht->len;
     struct BaseNode *bnode = &ht->arr[hash_v];
@@ -129,8 +169,21 @@ bool hashtbl_add(
         // */
         
         if (!memcmp(key, get_key(cur), cur->key_len)) {
-            node->next = cur->next;
-            node->prev = cur->prev;
+            //printf("replaced\n");
+            new_node->next = cur->next;
+            new_node->prev = cur->prev;
+            if (cur->next) {
+                //printf("next replaced\n");
+                cur->next->prev = new_node;
+            }
+            if (cur->prev) {
+                //printf("prev replaced\n");
+                cur->prev->next = new_node;
+            }
+            if (!cur->next && !cur->prev) {
+                //printf("head replaced\n");
+                bnode->head = new_node;
+            }
             //bnode->num--;
             free(cur);
             return false;
@@ -139,17 +192,18 @@ bool hashtbl_add(
     }
 
     if (!bnode->head) {
-        node->next = NULL;
-        node->prev = NULL;
+        new_node->next = NULL;
+        new_node->prev = NULL;
         ht->loaded++;
     } else {
-        bnode->head->prev = node;
-        node->prev = NULL;
-        node->next = bnode->head;
+        //printf("attach new_node to list head\n");
+        bnode->head->prev = new_node;
+        new_node->prev = NULL;
+        new_node->next = bnode->head;
     }
 
     bnode->num++;
-    bnode->head = node;
+    bnode->head = new_node;
 
     return true;
 }
@@ -245,6 +299,7 @@ void hashtbl_each(HashTable *ht, HashTableIterator func, void *data) {
     for (int j = 0; j < ht->len; j++) {
         struct Node *cur = ht->arr[j].head;
         while (cur) {
+            //printf("cur->counter %d, j %d", cur->counter, j);
             HashTableAction act = func(
                 get_key(cur), cur->key_len, 
                 get_value(cur), cur->value_len, 
@@ -254,18 +309,22 @@ void hashtbl_each(HashTable *ht, HashTableIterator func, void *data) {
                 case HT_ACTION_NEXT:
                       break;
                 case HT_ACTION_REMOVE_NEXT: {
-                      struct Node *next = cur->next;
-                      struct Node *prev = cur->prev;
-                      if (next)
-                          next->prev = prev;
-                      if (prev)
-                          prev->next = next;
-                      break;
+                    struct Node *next = cur->next;
+                    struct Node *prev = cur->prev;
+                    if (next)
+                        next->prev = prev;
+                    if (prev)
+                        prev->next = next;
+                    break;
                 }
                 case HT_ACTION_REMOVE_BREAK: {
-                    printf("HT_ACTION_REMOVE_BREAK is not implemented\n");
-                    abort();
-                    break;
+                    struct Node *next = cur->next;
+                    struct Node *prev = cur->prev;
+                    if (next)
+                        next->prev = prev;
+                    if (prev)
+                        prev->next = next;
+                    return;
                 }
                 case HT_ACTION_BREAK:
                       return;
