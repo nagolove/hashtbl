@@ -18,9 +18,8 @@
 ----------------------------------------------------------------------------
 */
 struct Node {
-    struct Node *prev;
-    struct Node *next;
     int key_len, value_len;
+    struct Node *prev, *next;
     //int counter;
 };
 
@@ -34,10 +33,10 @@ struct BaseNode {
 struct HashTable {
     struct BaseNode *arr;
     HashFunction    hasher;
-    //int             len, longestchain, loaded;
     //XXX: longestchain - вопрос реализации
     //XXX: shortestchain - ???
-    int             len, loaded;
+    int             len;
+    int             loaded; // количество хранящихся пар ключ-значение
 };
 
 /*#define default_hasher hasher_add*/
@@ -84,11 +83,12 @@ HashTable *hashtbl_new(struct HashSetup *setup) {
     struct HashTable *ht = calloc(1, sizeof(*ht));
     if (!ht) return NULL;
 
+    const int default_len = 256;
     if (setup) {
-        ht->len = setup->len ? setup->len : 1024;
+        ht->len = setup->len ? setup->len : default_len;
         ht->hasher = setup->hasher ? setup->hasher : default_hasher;
     } else {
-        ht->len = 1024;
+        ht->len = default_len;
         /*ht->len = 256;*/
         ht->hasher = default_hasher;
     }
@@ -167,8 +167,10 @@ bool hashtbl_add(
             (char*)key, (char*)get_key(cur), cur->key_len
         );
         // */
-        
-        if (!memcmp(key, get_key(cur), cur->key_len)) {
+
+        //assert(key_len == cur->key_len);
+        if (key_len == cur->key_len &&
+            !memcmp(key, get_key(cur), cur->key_len)) {
             //printf("replaced\n");
             new_node->next = cur->next;
             new_node->prev = cur->prev;
@@ -263,15 +265,13 @@ void *hashtbl_get(HashTable *ht, const void *key, int key_len, int *value_len) {
     assert(ht);
     assert(key);
 
-    if (!ht->len)
+    if (!ht->len || !ht->loaded)
         return NULL;
 
     Hash_t hash_v = ht->hasher(key, key_len) % ht->len;
     struct Node *cur = ht->arr[hash_v].head;
 
     while (cur) {
-        //if (!memcmp(key, get_key(cur), key_len)) {
-        /*printf("get_key(cur) %s\n", (char*)get_key(cur));*/
         if (!memcmp(key, get_key(cur), cur->key_len)) {
             if (value_len)
                 *value_len = cur->value_len;
