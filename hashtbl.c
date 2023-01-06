@@ -79,10 +79,7 @@ static inline uint32_t get_aligned_size(uint32_t size) {
     //return size - mod + (((mod + 15) >> 4) << 4);
 }
 
-HashTable *hashtbl_new(struct HashSetup *setup) {
-    struct HashTable *ht = calloc(1, sizeof(*ht));
-    if (!ht) return NULL;
-
+void hashtbl_init(struct HashSetup *setup, HashTable *ht) {
     const int default_len = 256;
     if (setup) {
         ht->len = setup->len ? setup->len : default_len;
@@ -95,12 +92,18 @@ HashTable *hashtbl_new(struct HashSetup *setup) {
 
     ht->len = next_size(ht->len);
     ht->arr = calloc(sizeof(ht->arr[0]), ht->len);
+    assert(ht);
+}
+
+HashTable *hashtbl_new(struct HashSetup *setup) {
+    struct HashTable *ht = calloc(1, sizeof(*ht));
+    if (!ht) return NULL;
+    hashtbl_init(setup, ht);
     return ht;
 }
 
-void hashtbl_free(HashTable *ht) {
-    if (!ht) return;
-
+void hashtbl_shutdown(HashTable *ht) {
+    assert(ht);
     for (int k = 0; k < ht->len; k++) {
         struct BaseNode *bnode = &ht->arr[k];
         struct Node *cur = bnode->head;
@@ -112,6 +115,11 @@ void hashtbl_free(HashTable *ht) {
         }
     }
     free(ht->arr);
+}
+
+void hashtbl_free(HashTable *ht) {
+    if (!ht) return;
+    hashtbl_shutdown(ht);
     free(ht);
 }
 
@@ -127,6 +135,27 @@ static inline void *get_value(const struct Node *node) {
                          get_aligned_size(node->key_len);
 }
 
+HashTableAction iter_rehash(
+    const void *key, int key_len, void *value, int value_len, void *data
+) {
+    HashTable *new_ht = data;
+    hashtbl_add(new_ht, key, key_len, value, value_len);
+    return HT_ACTION_NEXT;
+}
+
+HashTable hashtbl_rehash(HashTable *ht) {
+    assert(ht);
+    HashTable new_ht = {
+        .hasher = ht->hasher,
+        .len = next_size(ht->len),
+        .loaded = 0,
+    };
+    new_ht.arr = calloc(new_ht.len, sizeof(ht->arr[0]));
+    assert(new_ht.arr);
+    hashtbl_each(ht, iter_rehash, &new_ht);
+    return new_ht;
+}
+
 bool hashtbl_add(
     HashTable *ht, 
     const void *key, int key_len, const void *value, int value_len
@@ -135,6 +164,14 @@ bool hashtbl_add(
     assert(key);
     assert(key_len > 0);
     assert(value_len > 0);
+
+    const float overload = 0.5;
+    if (ht->loaded / (float)ht->len > overload) {
+        //HashTable new_ht = hashtbl_rehash(ht);
+        //hashtbl_shutdown(ht);
+        //memcpy(ht, &new_ht, sizeof(new_ht));
+        //printf("overload\n");
+    }
 
     uint32_t size = get_aligned_size(sizeof(struct Node)) + 
                     get_aligned_size(key_len) + value_len;

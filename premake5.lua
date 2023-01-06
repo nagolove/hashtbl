@@ -10,6 +10,10 @@ workspace "hashtbl"
         "-Wno-strict-aliasing",
         "-Wno-unused-function",
         "-Wno-unused-variable",
+        "-fsanitize=address",
+    }
+    linkoptions {
+        "-fsanitize=address",
     }
     links {}
     libdirs {}
