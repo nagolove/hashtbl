@@ -41,6 +41,7 @@ bool hashtbl_add(
 #define hashtbl_remove_s(ht, key_s) \
     hashtbl_remove(ht, key_s, strlen(key_s) + 1)
 
+// Возвращает истину если удаление произошло
 bool hashtbl_remove(HashTable *ht, const void *key, int key_len);
 void hashtbl_clear(HashTable *ht);
 
