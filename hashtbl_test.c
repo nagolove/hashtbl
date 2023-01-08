@@ -632,8 +632,8 @@ test_add_remove_part(const MunitParameter params[], void* data) {
     int remove_index = rand() % cases[0].len;
     munit_assert_true(hashtbl_remove(
         ht,
-        test_data[remove_index].key,
-        strlen(test_data[remove_index].key) + 1
+        cases[0].data[remove_index].key,
+        strlen(cases[0].data[remove_index].key) + 1
     ));
 
     bool *set = alloca(cases[0].len * sizeof(set[0]));

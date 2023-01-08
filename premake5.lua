@@ -1,5 +1,5 @@
 workspace "hashtbl"
-    configurations { "Debug", "Release" }
+    configurations { "Debug", "Release", "Sanitizer" }
 
     includedirs {}
     buildoptions { 
@@ -10,10 +10,6 @@ workspace "hashtbl"
         "-Wno-strict-aliasing",
         "-Wno-unused-function",
         "-Wno-unused-variable",
-        "-fsanitize=address",
-    }
-    linkoptions {
-        "-fsanitize=address",
     }
     links {}
     libdirs {}
@@ -120,11 +116,31 @@ static struct Pair %s[] = {
         write_test_cases()
 
         files { "**.h", "hashtbl_test.c", "munit.c", "hashtbl.c"}
+        
+    filter "configurations:Sanitizer"
+    defines { "DEBUG" }
+    symbols "On"
+    linkoptions {
+        "-fsanitize=address",
+    }
+    buildoptions { 
+        "-fsanitize=address",
+    }
+    --]]
 
     filter "configurations:Debug"
     defines { "DEBUG" }
     symbols "On"
+    --[[
+    linkoptions {
+        "-fsanitize=address",
+    }
+    buildoptions { 
+        "-fsanitize=address",
+    }
+    --]]
 
     filter "configurations:Release"
     defines { "NDEBUG" }
     optimize "On"
+    print('RELEASE mode')

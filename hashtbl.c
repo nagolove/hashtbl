@@ -73,10 +73,10 @@ uint32_t next_size(uint32_t size) {
 static inline uint32_t get_aligned_size(uint32_t size) {
     // XXX: Выделение лишних 16 байт при size % 16 == 0
     /*return size + 16 - size % 16;*/
-    return size;
-    //int mod = size % 16;
+    /*return size;*/
+    int mod = size % 16;
     /*return size - mod + (((mod + 15) / 16) << 4);*/
-    //return size - mod + (((mod + 15) >> 4) << 4);
+    return size - mod + (((mod + 15) >> 4) << 4);
 }
 
 void hashtbl_init(struct HashSetup *setup, HashTable *ht) {

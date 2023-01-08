@@ -14,6 +14,9 @@ endif
 ifeq ($(config),release)
   hashtbl_test_config = release
 endif
+ifeq ($(config),sanitizer)
+  hashtbl_test_config = sanitizer
+endif
 
 PROJECTS := hashtbl_test
 
@@ -36,6 +39,7 @@ help:
 	@echo "CONFIGURATIONS:"
 	@echo "  debug"
 	@echo "  release"
+	@echo "  sanitizer"
 	@echo ""
 	@echo "TARGETS:"
 	@echo "   all (default)"
